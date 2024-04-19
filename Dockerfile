@@ -236,6 +236,55 @@ ENV PATH=$RUN_TOOL_CACHE/node/$NODE_VERSION/x64/bin:$PATH
 RUN node --version
 
 
+
+# Everything up to here should cache nicely between Swift versions, assuming dev dependencies change little
+
+# gpg --keyid-format LONG -k F167DF1ACF9CE069
+# pub   rsa4096/F167DF1ACF9CE069 2021-11-08 [SC] [expires: 2025-11-09]
+#       E813C892820A6FA13755B268F167DF1ACF9CE069
+# uid                 [ unknown] Swift Automatic Signing Key #4 <swift-infrastructure@forums.swift.org>
+ARG SWIFT_SIGNING_KEY=E813C892820A6FA13755B268F167DF1ACF9CE069
+ARG SWIFT_PLATFORM=ubuntu22.04
+ARG SWIFT_BRANCH=swift-6.0-branch
+ARG SWIFT_VERSION=swift-6.0-DEVELOPMENT-SNAPSHOT-2024-04-18-a
+ARG SWIFT_WEBROOT=https://download.swift.org
+
+ENV SWIFT_SIGNING_KEY=$SWIFT_SIGNING_KEY \
+	SWIFT_PLATFORM=$SWIFT_PLATFORM \
+	SWIFT_BRANCH=$SWIFT_BRANCH \
+	SWIFT_VERSION=$SWIFT_VERSION \
+	SWIFT_WEBROOT=$SWIFT_WEBROOT
+
+ENV SWIFT_SIGNING_KEY=$SWIFT_SIGNING_KEY \
+	SWIFT_PLATFORM=$SWIFT_PLATFORM \
+	SWIFT_BRANCH=$SWIFT_BRANCH \
+	SWIFT_VERSION=$SWIFT_VERSION \
+	SWIFT_WEBROOT=$SWIFT_WEBROOT
+
+
+RUN set -eux; \
+	&& export $(curl -s ${SWIFT_WEBDIR}/latest-build.yml | grep 'download:' | sed 's/:[^:\/\/]/=/g')  \
+	&& SWIFT_VERSION=$(echo $download | sed "s/-$SWIFT_PLATFORM.tar.gz//g") \
+	SWIFT_WEBDIR="$SWIFT_WEBROOT/$SWIFT_BRANCH/$(echo $SWIFT_PLATFORM | tr -d .)" \
+	&& SWIFT_BIN_URL="$SWIFT_WEBDIR/$SWIFT_VERSION/$SWIFT_VERSION-$SWIFT_PLATFORM.tar.gz" \
+	&& SWIFT_SIG_URL="$SWIFT_BIN_URL.sig" \
+	# - Download the GPG keys, Swift toolchain, and toolchain signature, and verify.
+	&& export GNUPGHOME="$(mktemp -d)" \
+	&& curl -fsSL "$SWIFT_BIN_URL" -o $RUNNER_TEMP/swift.tar.gz "$SWIFT_SIG_URL" -o $RUNNER_TEMP/swift.tar.gz.sig \
+	&& gpg --batch --quiet --keyserver keyserver.ubuntu.com --recv-keys "$SWIFT_SIGNING_KEY" \
+	&& gpg --keyserver hkp://keyserver.ubuntu.com --refresh-keys Swift \
+	&& gpg --batch --verify $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
+	# - Unpack the toolchain, set libs permissions, and clean up.
+	&& SWIFT_PATH=$RUN_TOOL_CACHE/swift/6.0.0/x64 \
+	&& mkdir -p $SWIFT_PATH \
+	&& tar -xzf $RUNNER_TEMP/swift.tar.gz --directory $SWIFT_PATH --strip-components=1 \
+	&& chmod -R o+r $SWIFT_PATH/usr/lib/swift \
+	&& touch $SWIFT_PATH.complete \
+	&& rm -rf "$GNUPGHOME" $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
+	&& $SWIFT_PATH/usr/bin/swift --version
+
+
+
 RUN rm -rf $RUNNER_TEMP /var/cache/* /var/log/* /var/lib/apt/lists/*
 
 USER $RUNNER
