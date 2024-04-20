@@ -1,0 +1,13 @@
+services:
+  cache:
+    image: pkg.letus.codes/cache
+    ports:
+      - '8080:3000'
+    environment:
+      URL_ACCESS_TOKEN: 'JSwlhOXYdOl2zIu239N6lO0qDpFtAnw1CUWalzPka8b3crkAy'
+      BASE_URL: http://localhost:3000
+    volumes:
+      - cache-data:/data
+
+volumes:
+  cache-data:
