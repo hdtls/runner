@@ -1,5 +1,5 @@
 FROM ubuntu:24.04
-LABEL maintainer="Jeff (Junfeng Zhang) <jeff@letus.codes>"
+LABEL maintainer="Jeff (Junfeng Zhang) <jeff@tenbits.io>"
 LABEL description="Docker Container for the local github actions (act)."
 
 ARG RUNNER=runner
@@ -45,26 +45,28 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true && ap
 	tzdata \
 	zlib1g-dev \
 	zstd \
-	ssh
+	ssh \
+	yamllint \
+	yq
 
 RUN ssh-keyscan -t rsa github.com | tee -a /home/$RUNNER/.ssh/known_hosts \
 	&& chmod 644 /home/$RUNNER/.ssh/known_hosts \
 	&& chown -R $RUNNER:$RUNNER /home/$RUNNER/.ssh \
-	&& . /etc/environment
+	&& apt-get purge -y ssh
 
 
-ARG NODE_VERSION=20.17.0
-ARG NODE_BRANCH=20.17.0-10501110630
+ARG NODE_VERSION=22.10.0
+ARG NODE_BRANCH=22.10.0-11377615849
 ARG NODE_WEBROOT=https://github.com/actions/node-versions/releases/download
 
 RUN set -eux; \
-	ARCH_NAME="$(uname -m)"; \
+	ARCH_NAME="$(dpkg --print-architecture)"; \
 	case "${ARCH_NAME##*-}" in \
-	'aarch64') \
-	OS_ARCH_SUFFIX='-arm64'; \
-	;; \
-	'x86_64') \
+	'amd64') \
 	OS_ARCH_SUFFIX='-x64'; \
+	;; \
+	'arm64') \
+	OS_ARCH_SUFFIX='-arm64'; \
 	;; \
 	'armv7l') \
 	OS_ARCH_SUFFIX='-armv7l'; \
@@ -76,36 +78,34 @@ RUN set -eux; \
 	# - Download the node.
 	&& curl -fsSL "$NODE_BIN_URL" -o $RUNNER_TEMP/node.tar.gz \
 	# - Unpack the node bin, set libs permissions, and clean up.
-	# && TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/node/$NODE_VERSION/x64 \
-	&& TOOL_INSTALL_PREFIX=/usr/local \
+	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/node/$NODE_VERSION/$(echo $OS_ARCH_SUFFIX | cut -d '-' -f 2) \
+	# && TOOL_INSTALL_PREFIX=/usr/local \
 	&& mkdir -p $TOOL_INSTALL_PREFIX \
 	&& chown -R $RUNNER:$RUNNER $TOOL_INSTALL_PREFIX \
 	&& tar -xzf $RUNNER_TEMP/node.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
-	# && ln -s $TOOL_INSTALL_PREFIX/bin/node /usr/local/bin/node \
-	# && touch $TOOL_INSTALL_PREFIX.complete \
-	# && chmod -R o+r $TOOL_INSTALL_PREFIX \
-	&& rm -rf $RUNNER_TEMP/node.tar.gz \ 
-	# && sed 's|"||g' -i "/etc/environment" \
-	# && sed "s|^PATH=|PATH=$RUNNER_TOOL_CACHE/node/$NODE_VERSION/x64/bin:|mg" -i /etc/environment \
-	# && export PATH=$RUNNER_TOOL_CACHE/node/$NODE_VERSION/x64/bin:$PATH \
-	&& npm install -g npm pnpm yarn
-
-# Print Installed Node Version
-RUN node --version
+	&& ln -s $TOOL_INSTALL_PREFIX/bin/node /usr/local/bin/node \
+	&& touch $TOOL_INSTALL_PREFIX.complete \
+	&& chmod -R o+r $TOOL_INSTALL_PREFIX \
+	&& rm -rf $RUNNER_TEMP/node.tar.gz \
+	&& sed 's|"||g' -i "/etc/environment" \
+	&& sed "s|^PATH=|PATH=$TOOL_INSTALL_PREFIX/bin:|mg" -i /etc/environment \
+	&& . /etc/environment \
+	&& npm install -g npm pnpm yarn \
+	&& node --version
 
 
-ARG PYTHON_VERSION=3.12.6
-ARG PYTHON_BRANCH=3.12.6-10765725458
+ARG PYTHON_VERSION=3.13.0
+ARG PYTHON_BRANCH=3.13.0-11228081754
 ARG PYTHON_WEBROOT=https://github.com/actions/python-versions/releases/download
 
 RUN set -eux; \
-	ARCH_NAME="$(uname -m)"; \
+	ARCH_NAME="$(dpkg --print-architecture)"; \
 	case "${ARCH_NAME##*-}" in \
-	'aarch64') \
-	OS_ARCH_SUFFIX='-arm64'; \
-	;; \
-	'x86_64') \
+	'amd64') \
 	OS_ARCH_SUFFIX='-x64'; \
+	;; \
+	'arm64') \
+	OS_ARCH_SUFFIX='-arm64'; \
 	;; \
 	'armv7l') \
 	OS_ARCH_SUFFIX='-armv7l'; \
@@ -116,7 +116,7 @@ RUN set -eux; \
 	# - Download the python.
 	&& curl -fsSL "$PYTHON_BIN_URL" -o $RUNNER_TEMP/python.tar.gz \
 	# - Unpack the python bin, set libs permissions, and clean up.
-	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/Python/$PYTHON_VERSION/x64 \
+	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/Python/$PYTHON_VERSION/$(echo $OS_ARCH_SUFFIX | cut -d '-' -f 2) \
 	&& mkdir -p $TOOL_INSTALL_PREFIX \
 	&& chown -R $RUNNER:$RUNNER $TOOL_INSTALL_PREFIX \
 	&& tar -xzf $RUNNER_TEMP/python.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
@@ -134,21 +134,19 @@ RUN set -eux; \
 	&& $TOOL_INSTALL_PREFIX/bin/python -m pip install --ignore-installed pip --disable-pip-version-check --no-warn-script-location --root-user-action=ignore \
 	&& touch $TOOL_INSTALL_PREFIX.complete \
 	&& rm -rf $TOOL_INSTALL_PREFIX/setup.sh \
-	&& export PATH=$TOOL_INSTALL_PREFIX/bin:$PATH \
-	&& python --version
-
-# Print Installed Python Version
-# RUN python --version
-
+	&& rm -rf $RUNNER_TEMP/python.tar.gz \
+	&& sed "s|^PATH=|PATH=$TOOL_INSTALL_PREFIX/bin:|mg" -i /etc/environment \
+	&& . /etc/environment \
+	&& python3 --version
 
 # Everything up to here should cache nicely between Swift versions, assuming dev dependencies change little
 
-# pub   4096R/ED3D1561 2019-03-22 [SC] [expires: 2023-03-23]
-#       Key fingerprint = A62A E125 BBBF BB96 A6E0  42EC 925C C1CC ED3D 1561
-# uid                  Swift 5.x Release Signing Key <swift-infrastructure@swift.org>
-ARG SWIFT_PLATFORM=ubuntu22.04
-ARG SWIFT_BRANCH=swift-5.9.2-release
-ARG SWIFT_VERSION=swift-5.9.2-RELEASE
+# pub   rsa4096 2024-09-16 [SC] [expires: 2026-09-16]
+#      52BB7E3DE28A71BE22EC05FFEF80A866B47A981F
+# uid           [ unknown] Swift 6.x Release Signing Key <swift-infrastructure@forums.swift.org>
+ARG SWIFT_PLATFORM=ubuntu24.04
+ARG SWIFT_BRANCH=swift-6.0.2-release
+ARG SWIFT_VERSION=swift-6.0.2-RELEASE
 ARG SWIFT_WEBROOT=https://download.swift.org
 
 RUN set -eux; \
@@ -157,97 +155,15 @@ RUN set -eux; \
 	case "${ARCH_NAME##*-}" in \
 	'amd64') \
 	OS_ARCH_SUFFIX=''; \
+	TOOL_INSTALL_PREFIX_SUFFIX='x64'; \
 	;; \
 	'arm64') \
 	OS_ARCH_SUFFIX='-aarch64'; \
-	;; \
-	*) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
-	esac; \
-	SWIFT_SIGNING_KEY=A62AE125BBBFBB96A6E042EC925CC1CCED3D1561 \
-	&& SWIFT_WEBDIR="$SWIFT_WEBROOT/$SWIFT_BRANCH/$(echo $SWIFT_PLATFORM | tr -d .)$OS_ARCH_SUFFIX" \
-	&& SWIFT_BIN_URL="$SWIFT_WEBDIR/$SWIFT_VERSION/$SWIFT_VERSION-$SWIFT_PLATFORM$OS_ARCH_SUFFIX.tar.gz" \
-	&& SWIFT_SIG_URL="$SWIFT_BIN_URL.sig" \
-	# - Download the GPG keys, Swift toolchain, and toolchain signature, and verify.
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& curl -fsSL "$SWIFT_BIN_URL" -o $RUNNER_TEMP/swift.tar.gz "$SWIFT_SIG_URL" -o $RUNNER_TEMP/swift.tar.gz.sig \
-	&& gpg --batch --quiet --keyserver keyserver.ubuntu.com --recv-keys "$SWIFT_SIGNING_KEY" \
-	&& gpg --batch --verify $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
-	# - Unpack the toolchain, set libs permissions, and clean up.
-	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/swift/$(echo $SWIFT_VERSION | tr -d swift- | tr -d RELEASE)/x64 \
-	&& mkdir -p $TOOL_INSTALL_PREFIX \
-	&& chown -R $RUNNER:$RUNNER $TOOL_INSTALL_PREFIX \
-	&& tar -xzf $RUNNER_TEMP/swift.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
-	&& chmod -R o+r $TOOL_INSTALL_PREFIX/usr/lib/swift \
-	&& touch $TOOL_INSTALL_PREFIX.complete \
-	&& rm -rf "$GNUPGHOME" $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
-	&& export PATH=$TOOL_INSTALL_PREFIX/usr/bin:$PATH \
-	&& swift --version
-
-
-
-# Everything up to here should cache nicely between Swift versions, assuming dev dependencies change little
-
-# pub   4096R/ED3D1561 2019-03-22 [SC] [expires: 2023-03-23]
-#       Key fingerprint = A62A E125 BBBF BB96 A6E0  42EC 925C C1CC ED3D 1561
-# uid                  Swift 5.x Release Signing Key <swift-infrastructure@swift.org>
-RUN set -eux; \
-	ARCH_NAME="$(dpkg --print-architecture)"; \
-	url=; \
-	case "${ARCH_NAME##*-}" in \
-	'amd64') \
-	OS_ARCH_SUFFIX=''; \
-	;; \
-	'arm64') \
-	OS_ARCH_SUFFIX='-aarch64'; \
-	;; \
-	*) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
-	esac; \
-	SWIFT_SIGNING_KEY=A62AE125BBBFBB96A6E042EC925CC1CCED3D1561 \
-	&& SWIFT_PLATFORM=ubuntu24.04 \
-	&& SWIFT_BRANCH=swift-5.10.1-release \
-	&& SWIFT_VERSION=swift-5.10.1-RELEASE \
-	&& SWIFT_WEBDIR="$SWIFT_WEBROOT/$SWIFT_BRANCH/$(echo $SWIFT_PLATFORM | tr -d .)$OS_ARCH_SUFFIX" \
-	&& SWIFT_BIN_URL="$SWIFT_WEBDIR/$SWIFT_VERSION/$SWIFT_VERSION-$SWIFT_PLATFORM$OS_ARCH_SUFFIX.tar.gz" \
-	&& SWIFT_SIG_URL="$SWIFT_BIN_URL.sig" \
-	# - Download the GPG keys, Swift toolchain, and toolchain signature, and verify.
-	&& export GNUPGHOME="$(mktemp -d)" \
-	&& curl -fsSL "$SWIFT_BIN_URL" -o $RUNNER_TEMP/swift.tar.gz "$SWIFT_SIG_URL" -o $RUNNER_TEMP/swift.tar.gz.sig \
-	&& gpg --batch --quiet --keyserver keyserver.ubuntu.com --recv-keys "$SWIFT_SIGNING_KEY" \
-	&& gpg --batch --verify $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
-	# - Unpack the toolchain, set libs permissions, and clean up.
-	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/swift/$(echo $SWIFT_VERSION | tr -d swift- | tr -d RELEASE)/x64 \
-	&& mkdir -p $TOOL_INSTALL_PREFIX \
-	&& chown -R $RUNNER:$RUNNER $TOOL_INSTALL_PREFIX \
-	&& tar -xzf $RUNNER_TEMP/swift.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
-	&& chmod -R o+r $TOOL_INSTALL_PREFIX/usr/lib/swift \
-	&& touch $TOOL_INSTALL_PREFIX.complete \
-	&& rm -rf "$GNUPGHOME" $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
-	&& export PATH=$TOOL_INSTALL_PREFIX/usr/bin:$PATH \
-	&& swift --version
-
-
-
-# Everything up to here should cache nicely between Swift versions, assuming dev dependencies change little
-
-# pub   rsa4096 2024-09-16 [SC] [expires: 2026-09-16]
-#      52BB7E3DE28A71BE22EC05FFEF80A866B47A981F
-# uid           [ unknown] Swift 6.x Release Signing Key <swift-infrastructure@forums.swift.org>
-RUN set -eux; \
-	ARCH_NAME="$(dpkg --print-architecture)"; \
-	url=; \
-	case "${ARCH_NAME##*-}" in \
-	'amd64') \
-	OS_ARCH_SUFFIX=''; \
-	;; \
-	'arm64') \
-	OS_ARCH_SUFFIX='-aarch64'; \
+	TOOL_INSTALL_PREFIX_SUFFIX='arm64'; \
 	;; \
 	*) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
 	esac; \
 	SWIFT_SIGNING_KEY=52BB7E3DE28A71BE22EC05FFEF80A866B47A981F \
-	&& SWIFT_PLATFORM=ubuntu24.04 \
-	&& SWIFT_BRANCH=swift-6.0.1-release \
-	&& SWIFT_VERSION=swift-6.0.1-RELEASE \
 	&& SWIFT_WEBDIR="$SWIFT_WEBROOT/$SWIFT_BRANCH/$(echo $SWIFT_PLATFORM | tr -d .)$OS_ARCH_SUFFIX" \
 	&& SWIFT_BIN_URL="$SWIFT_WEBDIR/$SWIFT_VERSION/$SWIFT_VERSION-$SWIFT_PLATFORM$OS_ARCH_SUFFIX.tar.gz" \
 	&& SWIFT_SIG_URL="$SWIFT_BIN_URL.sig" \
@@ -258,15 +174,21 @@ RUN set -eux; \
 	&& gpg --keyserver hkp://keyserver.ubuntu.com --refresh-keys Swift \
 	&& gpg --batch --verify $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
 	# - Unpack the toolchain, set libs permissions, and clean up.
-	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/swift/$(echo $SWIFT_VERSION | tr -d swift- | tr -d RELEASE)/x64 \
+	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/swift/$(echo $SWIFT_VERSION | tr -d swift- | tr -d RELEASE)/$TOOL_INSTALL_PREFIX_SUFFIX \
 	&& mkdir -p $TOOL_INSTALL_PREFIX \
 	&& chown -R $RUNNER:$RUNNER $TOOL_INSTALL_PREFIX \
 	&& tar -xzf $RUNNER_TEMP/swift.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
 	&& chmod -R o+r $TOOL_INSTALL_PREFIX/usr/lib/swift \
 	&& touch $TOOL_INSTALL_PREFIX.complete \
 	&& rm -rf "$GNUPGHOME" $RUNNER_TEMP/swift.tar.gz.sig $RUNNER_TEMP/swift.tar.gz \
-	&& export PATH=$TOOL_INSTALL_PREFIX/usr/bin:$PATH \
+	&& sed "s|^PATH=|PATH=$TOOL_INSTALL_PREFIX/usr/bin:|mg" -i /etc/environment \
+	&& . /etc/environment \
 	&& swift --version
 
 
 RUN rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
+
+USER $RUNNER
+
+ENTRYPOINT ["sh", "-c", "export PATH=$(cat /etc/environment | grep -o '^PATH=.*' | sed 's/^PATH=//g') && exec \"$@\"", "--"]
+CMD ["bash"]
