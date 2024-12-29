@@ -15,11 +15,23 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  soundness:
+    name: Soundness
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@main
+    with:
+      api_breakage_check_enabled: false
+      format_check_enabled: false
+      unacceptable_language_check_enabled: false
+      license_header_check_project_name: "Netbot"
+      linux_pre_build_command: |
+        git config --global url."https://${{ github.token }}@github".insteadOf https://github
+        cat ~/.gitconfig
+
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
