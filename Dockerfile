@@ -38,9 +38,9 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
 RUN mkdir -m 0777 -p $RUNNER_TOOL_CACHE \
     makdir -p $RUNNER_TEMP
 
-RUN	export RUNNER_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_ARCH" = "amd64" ]; then export NODE_BIN_URL="$NODE_WEBROOT/$NODE_BRANCH/node-$NODE_VERSION-linux-x64.tar.gz" ; fi \
-    && if [ "$RUNNER_ARCH" = "arm64" ]; then export NODE_BIN_URL="$NODE_WEBROOT/$NODE_BRANCH/node-$NODE_VERSION-linux-aarch64.tar.gz" ; fi \
+RUN	export RUNNER_TOOL_ARCH=${TARGETARCH} \
+    && if [ "$RUNNER_TOOL_ARCH" = "amd64" ]; then export RUNNER_TOOL_ARCH=x64 ; fi \
+    && export NODE_BIN_URL="$NODE_WEBROOT/$NODE_BRANCH/node-$NODE_VERSION-linux-$RUNNER_TOOL_ARCH.tar.gz" \
     # - Download the node.
     && curl -fsSL "$NODE_BIN_URL" -o $RUNNER_TEMP/node.tar.gz \
     # - Unpack the node bin, set libs permissions, and clean up.
@@ -51,9 +51,9 @@ RUN	export RUNNER_ARCH=${TARGETARCH} \
     && chmod -R o+r $TOOL_INSTALL_PREFIX \
     && rm -rf $RUNNER_TEMP/*
 
-RUN	export RUNNER_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_ARCH" = "amd64" ]; then export PYTHON_BIN_URL="$PYTHON_WEBROOT/$PYTHON_BRANCH/python-$PYTHON_VERSION-linux-24.04-x64.tar.gz" ; fi \
-    && if [ "$RUNNER_ARCH" = "arm64" ]; then export PYTHON_BIN_URL="$PYTHON_WEBROOT/$PYTHON_BRANCH/python-$PYTHON_VERSION-linux-24.04-aarch64.tar.gz" ; fi \
+RUN	export RUNNER_TOOL_ARCH=${TARGETARCH} \
+    && if [ "$RUNNER_TOOL_ARCH" = "amd64" ]; then export RUNNER_TOOL_ARCH=x64 ; fi \
+    && export PYTHON_BIN_URL="$PYTHON_WEBROOT/$PYTHON_BRANCH/python-$PYTHON_VERSION-linux-24.04-$RUNNER_TOOL_ARCH.tar.gz" \
 	# - Download the python.
 	&& curl -fsSL "$PYTHON_BIN_URL" -o $RUNNER_TEMP/python.tar.gz \
 	# - Unpack the python bin, set libs permissions, and clean up.
