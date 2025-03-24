@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 AS build
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -35,46 +35,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-RUN mkdir -m 0777 -p $RUNNER_TOOL_CACHE \
-    makdir -p $RUNNER_TEMP
-
-RUN	export RUNNER_TOOL_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_TOOL_ARCH" = "amd64" ]; then export RUNNER_TOOL_ARCH=x64 ; fi \
-    && export NODE_BIN_URL="$NODE_WEBROOT/$NODE_BRANCH/node-$NODE_VERSION-linux-$RUNNER_TOOL_ARCH.tar.gz" \
-    # - Download the node.
-    && curl -fsSL "$NODE_BIN_URL" -o $RUNNER_TEMP/node.tar.gz \
-    # - Unpack the node bin, set libs permissions, and clean up.
-    && TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/node/$NODE_VERSION/$TARGETARCH \
-    && mkdir -p $TOOL_INSTALL_PREFIX \
-    && tar -xzf $RUNNER_TEMP/node.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
-    && touch $TOOL_INSTALL_PREFIX.complete \
-    && chmod -R o+r $TOOL_INSTALL_PREFIX \
-    && rm -rf $RUNNER_TEMP/*
-
-RUN	export RUNNER_TOOL_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_TOOL_ARCH" = "amd64" ]; then export RUNNER_TOOL_ARCH=x64 ; fi \
-    && export PYTHON_BIN_URL="$PYTHON_WEBROOT/$PYTHON_BRANCH/python-$PYTHON_VERSION-linux-24.04-$RUNNER_TOOL_ARCH.tar.gz" \
-	# - Download the python.
-	&& curl -fsSL "$PYTHON_BIN_URL" -o $RUNNER_TEMP/python.tar.gz \
-	# - Unpack the python bin, set libs permissions, and clean up.
-	&& TOOL_INSTALL_PREFIX=$RUNNER_TOOL_CACHE/Python/$PYTHON_VERSION/$TARGETARCH \
-	&& mkdir -p $TOOL_INSTALL_PREFIX \
-	&& tar -xzf $RUNNER_TEMP/python.tar.gz --directory $TOOL_INSTALL_PREFIX --strip-components=1 \
-	&& PYTHON_MAJOR_VERSION=$(echo $PYTHON_VERSION | cut -d '.' -f 1) \
-	&& PYTHON_MINOR_VERSION=$(echo $PYTHON_VERSION | cut -d '.' -f 2) \
-	# - Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action).
-	&& ln -s $TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION.$PYTHON_MINOR_VERSION $TOOL_INSTALL_PREFIX/bin/python \
-	&& ln -s $TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION.$PYTHON_MINOR_VERSION $TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION$PYTHON_MINOR_VERSION \
-	&& chmod +x $TOOL_INSTALL_PREFIX/bin/python \
-	$TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION \
-	$TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION.$PYTHON_MINOR_VERSION \
-	$TOOL_INSTALL_PREFIX/bin/python$PYTHON_MAJOR_VERSION$PYTHON_MINOR_VERSION \
-	&& touch $TOOL_INSTALL_PREFIX.complete \
-	&& rm -rf $TOOL_INSTALL_PREFIX/setup.sh \
-	&& rm -rf $RUNNER_TEMP/*
-
-
-FROM ubuntu:24.04
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
 
 ARG TARGETOS
 ARG TARGETARCH
