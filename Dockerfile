@@ -53,7 +53,7 @@ RUN apt update -y \
 
 # Install common packages
 RUN apt update -y \
-    && apt install -y autoconf automake dbus dnsutils dpkg dpkg-dev gnupg2 fakeroot fonts-noto-color-emoji gnupg2 imagemagick iproute2 iputils-ping lib32z1 libc++abi-dev libc++-dev libc6-dev libcurl4 libgbm-dev libgconf-2-4 libgsl-dev libgtk-3-0 libmagic-dev libmagickcore-dev libmagickwand-dev libsecret-1-dev libsqlite3-dev libyaml-dev libtool libunwind8 libxkbfile-dev libxss1 libssl-dev locales mercurial openssh-client p7zip-rar pkg-config texinfo tk tzdata upx xorriso xvfb xz-utils zsync \
+    && apt install -y autoconf automake dbus dnsutils dpkg dpkg-dev gnupg2 fakeroot fonts-noto-color-emoji gnupg2 imagemagick iproute2 iputils-ping libc++abi-dev libc++-dev libc6-dev libcurl4 libgbm-dev libgconf-2-4 libgsl-dev libgtk-3-0 libmagic-dev libmagickcore-dev libmagickwand-dev libsecret-1-dev libsqlite3-dev libyaml-dev libtool libunwind8 libxkbfile-dev libxss1 libssl-dev locales mercurial openssh-client p7zip-rar pkg-config texinfo tk tzdata upx xorriso xvfb xz-utils zsync \
 	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
 
 # Install cmd packages
