@@ -3,8 +3,8 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG DOCKER_VERSION=28.0.1
-ARG BUILDX_VERSION=0.21.2
+ARG DOCKER_VERSION=28.3.3
+ARG BUILDX_VERSION=0.27.0
 
 RUN apt-get update -y && apt-get install -y curl unzip
 
