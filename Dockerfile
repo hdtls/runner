@@ -3,8 +3,8 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG DOCKER_VERSION=28.3.3
-ARG BUILDX_VERSION=0.27.0
+ARG DOCKER_VERSION=29.3.0
+ARG BUILDX_VERSION=0.32.1
 
 RUN apt-get update -y && apt-get install -y curl unzip
 
@@ -33,7 +33,7 @@ ARG RUNNER_TEMP=/home/$RUNNER/work/_temp
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_TOOL_CACHE=$RUNNER_TOOL_CACHE
 ENV RUNNER_TEMP=$RUNNER_TEMP
-ENV ImageOS=ubuntu22
+ENV ImageOS=ubuntu24
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
@@ -62,7 +62,7 @@ RUN apt update -y \
 	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
 
 # Install NodeJS
-RUN curl -fsSL https://deb.nodesource.com/setup_23.x | bash 
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash 
 RUN apt install -y nodejs \
     && rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
 
