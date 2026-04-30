@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy AS build
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble AS build
 
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG DOCKER_VERSION=29.3.0
-ARG BUILDX_VERSION=0.32.1
+ARG DOCKER_VERSION=29.4.0
+ARG BUILDX_VERSION=0.33.0
 
 RUN apt-get update -y && apt-get install -y curl unzip
 
@@ -21,7 +21,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -46,24 +46,12 @@ RUN add-apt-repository ppa:git-core/ppa \
     && apt install -y git \
 	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
 
-# Install vital packages
-RUN apt update -y \
-    && apt install -y bzip2 curl g++ gcc make jq tar unzip wget \
-    && rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
-
-# Install common packages
-RUN apt update -y \
-    && apt install -y autoconf automake dbus dnsutils dpkg dpkg-dev gnupg2 fakeroot fonts-noto-color-emoji gnupg2 imagemagick iproute2 iputils-ping libc++abi-dev libc++-dev libc6-dev libcurl4 libgbm-dev libgconf-2-4 libgsl-dev libgtk-3-0 libmagic-dev libmagickcore-dev libmagickwand-dev libsecret-1-dev libsqlite3-dev libyaml-dev libtool libunwind8 libxkbfile-dev libxss1 libssl-dev locales mercurial openssh-client p7zip-rar pkg-config texinfo tk tzdata upx xorriso xvfb xz-utils zsync \
-	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
-
-# Install cmd packages
-RUN apt update -y \
-    && apt install -y acl aria2 binutils bison brotli coreutils file findutils flex ftp haveged lz4 m4 mediainfo netcat net-tools p7zip-full parallel pass patchelf pigz pollinate rsync shellcheck sphinxsearch sqlite3 ssh sshpass subversion sudo systemd-coredump swig telnet time yamllint zip \
-	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
-
-# Install NodeJS
-RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash 
-RUN apt install -y nodejs \
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash \
+    && apt update -y \
+    && apt install -y nodejs \
+    && apt install -y shellcheck yamllint \
+    && apt install -y python3-pip \
+    && python3 -m pip config --global set global.break-system-packages true \
     && rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" --uid 1001 $RUNNER \
@@ -87,7 +75,3 @@ RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 USER $RUNNER
 
 ENV PATH=/home/$RUNNER/.local/bin:$PATH
-
-# Install Python Pip
-RUN curl https://bootstrap.pypa.io/get-pip.py | python3 \
-    && pip install --upgrade pip
