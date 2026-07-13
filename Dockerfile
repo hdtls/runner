@@ -3,8 +3,8 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble AS build
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG DOCKER_VERSION=29.4.0
-ARG BUILDX_VERSION=0.33.0
+ARG DOCKER_VERSION=29.6.1
+ARG BUILDX_VERSION=0.35.0
 
 RUN apt-get update -y && apt-get install -y curl unzip
 
