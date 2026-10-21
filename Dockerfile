@@ -3,8 +3,8 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble AS build
 ARG TARGETOS
 ARG TARGETARCH
 
-ARG DOCKER_VERSION=29.6.1
-ARG BUILDX_VERSION=0.35.0
+ARG DOCKER_VERSION=29.9.1
+ARG BUILDX_VERSION=0.38.0
 
 RUN apt-get update -y && apt-get install -y curl unzip
 
@@ -31,6 +31,8 @@ ARG RUNNER_TOOL_CACHE=/opt/hostedtoolcache
 ARG RUNNER_TEMP=/home/$RUNNER/work/_temp
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
+ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV RUNNER_TOOL_CACHE=$RUNNER_TOOL_CACHE
 ENV RUNNER_TEMP=$RUNNER_TEMP
 ENV ImageOS=ubuntu24
@@ -38,13 +40,13 @@ ENV ImageOS=ubuntu24
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
     && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common curl jq unzip \
-	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
 RUN add-apt-repository ppa:git-core/ppa \
     && apt update -y \
     && apt install -y git \
-	&& rm -rf /var/cache/* /var/log/* /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash \
     && apt update -y \
@@ -60,7 +62,8 @@ RUN adduser --disabled-password --gecos "" --uid 1001 $RUNNER \
     && usermod -aG docker $RUNNER \
     && usermod -aG root $RUNNER \
     && echo "%sudo   ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers \
-    && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers
+    && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers \
+    && chmod 777 /home/$RUNNER 
 
 RUN mkdir -m 0777 -p $RUNNER_TOOL_CACHE \
 	&& mkdir -p $RUNNER_TEMP \
@@ -70,6 +73,7 @@ WORKDIR /home/$RUNNER
 
 COPY --chown=$RUNNER:docker --from=build /_w .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
 USER $RUNNER
